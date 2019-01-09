@@ -1,243 +1,358 @@
-createLandscape({
-  palleteImage:'img/pallete.png'
-})
+/**
+ * demo1.js
+ * http://www.codrops.com
+ *
+ * Licensed under the MIT license.
+ * http://www.opensource.org/licenses/mit-license.php
+ * 
+ * Copyright 2017, Codrops
+ * http://www.codrops.com
+ */
+{
+	// Helper vars and functions.
+	const extend = function(a, b) {
+		for( let key in b ) { 
+			if( b.hasOwnProperty( key ) ) {
+				a[key] = b[key];
+			}
+		}
+		return a;
+	};
 
-function createLandscape(params){
+	// from http://www.quirksmode.org/js/events_properties.html#position
+	const getMousePos = function(ev) {
+		let posx = 0;
+		let posy = 0;
+		if (!ev) ev = window.event;
+		if (ev.pageX || ev.pageY) 	{
+			posx = ev.pageX;
+			posy = ev.pageY;
+		}
+		else if (ev.clientX || ev.clientY) 	{
+			posx = ev.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+			posy = ev.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+		}
+		return { x : posx, y : posy };
+	};
 
-  var container = document.querySelector(".landscape")
-  var width = window.innerWidth;
-  var height = window.innerHeight;
+	const TiltObj = function(el, options) {
+		this.el = el;
+		this.options = extend({}, this.options);
+		extend(this.options, options);
+		this.DOM = {};
+		this.DOM.img = this.el.querySelector('.content__img');
+		this.DOM.title = this.el.querySelector('.content__title');
+		this._initEvents();
+	}
 
-  var scene, renderer, camera;
-  var terrain;
+	TiltObj.prototype.options = {
+		movement: {
+			img : { translation : {x: -40, y: -40} },
+			title : { translation : {x: 20, y: 20} },
+		}
+	};
 
-  var mouse = { x:0, y:0, xDamped:0, yDamped:0 };
-  var isMobile = typeof window.orientation !== 'undefined'
+	TiltObj.prototype._initEvents = function() {
+		this.mouseenterFn = (ev) => {
+			anime.remove(this.DOM.img);
+			anime.remove(this.DOM.title);
+		};
+		
+		this.mousemoveFn = (ev) => {
+			requestAnimationFrame(() => this._layout(ev));
+		};
+		
+		this.mouseleaveFn = (ev) => {
+			requestAnimationFrame(() => {
+				anime({
+					targets: [this.DOM.img, this.DOM.title],
+					duration: 1500,
+					easing: 'easeOutElastic',
+					elasticity: 400,
+					translateX: 0,
+					translateY: 0
+				});
+			});
+		};
 
-  init();
+		this.el.addEventListener('mousemove', this.mousemoveFn);
+		this.el.addEventListener('mouseleave', this.mouseleaveFn);
+		this.el.addEventListener('mouseenter', this.mouseenterFn);
+	};
 
-  function init(){
+	TiltObj.prototype._layout = function(ev) {
+		// Mouse position relative to the document.
+		const mousepos = getMousePos(ev);
+		// Document scrolls.
+		const docScrolls = {left : document.body.scrollLeft + document.documentElement.scrollLeft, top : document.body.scrollTop + document.documentElement.scrollTop};
+		const bounds = this.el.getBoundingClientRect();
+		// Mouse position relative to the main element (this.DOM.el).
+		const relmousepos = { x : mousepos.x - bounds.left - docScrolls.left, y : mousepos.y - bounds.top - docScrolls.top };
 
-    sceneSetup();
-    sceneElements();
-    sceneTextures();
-    render();
+		// Movement settings for the animatable elements.
+		const t = {
+			img: this.options.movement.img.translation,
+			title: this.options.movement.title.translation,
+		};
+			
+		const transforms = {
+			img : {
+				x: (-1*t.img.x - t.img.x)/bounds.width*relmousepos.x + t.img.x,
+				y: (-1*t.img.y - t.img.y)/bounds.height*relmousepos.y + t.img.y
+			},
+			title : {
+				x: (-1*t.title.x - t.title.x)/bounds.width*relmousepos.x + t.title.x,
+				y: (-1*t.title.y - t.title.y)/bounds.height*relmousepos.y + t.title.y
+			}
+		};
+		this.DOM.img.style.WebkitTransform = this.DOM.img.style.transform = 'translateX(' + transforms.img.x + 'px) translateY(' + transforms.img.y + 'px)';
+		this.DOM.title.style.WebkitTransform = this.DOM.title.style.transform = 'translateX(' + transforms.title.x + 'px) translateY(' + transforms.title.y + 'px)';
+	};
 
-    if(isMobile)
-      window.addEventListener("touchmove", onInputMove, {passive:false})
-    else
-      window.addEventListener("mousemove", onInputMove)
-    
-    window.addEventListener("resize", resize)
-    resize()
-  }
+	const DOM = {};
+	DOM.svg = document.querySelector('.morph');
+	DOM.shapeEl = DOM.svg.querySelector('polygon');
+	DOM.contentElems = Array.from(document.querySelectorAll('.content-wrap'));
+	DOM.contentLinks = Array.from(document.querySelectorAll('.content__link'));
+	DOM.footer = document.querySelector('.content--related');
+	const contentElemsTotal = DOM.contentElems.length;
+	const shapes = [
+		{
+			points: '700,84.4 1047.1,685.6 352.9,685.6 352.9,685.6 352.9,685.6 352.9,685.6',
+			scaleX: .8,
+			scaleY: .9,
+			rotate: 0,
+			tx: 0,
+			ty: 0,
+			fill: {
+				color: 'none',
+				duration: 500,
+				easing: 'linear'
+			},
+			animation: {
+				points: {
+					duration: 500,
+					easing: 'easeOutExpo'
+				},
+				svg: {
+					duration: 1500,
+					easing: 'easeOutElastic'
+				}
+			}
+		},
+		{
+			points: '983.4,101.6 983.4,668.4 416.6,668.4 416.6,101.9 416.6,101.9 416.6,101.9',
+			scaleX: .7,
+			scaleY: .7,
+			rotate: 90,
+			tx: -100,
+			ty: 100,
+			fill: {
+				color: 'none',
+				duration: 500,
+				easing: 'linear'
+			},
+			animation: {
+				points: {
+					duration: 500,
+					easing: 'easeOutExpo'
+				},
+				svg: {
+					duration: 1500,
+					easing: 'easeOutElastic'
+				}
+			}
+		},
+		{
+			points: '890.9,54.3 1081.8,385 890.9,715.7 509.1,715.7 318.2,385 509.1,54.3',
+			scaleX: 1,
+			scaleY: 1,
+			rotate: -45,
+			tx: 0,
+			ty: -50,
+			fill: {
+				color: 'none',
+				duration: 500,
+				easing: 'linear'
+			},
+			animation: {
+				points: {
+					duration: 500,
+					easing: 'easeOutExpo'
+				},
+				svg: {
+					duration: 1500,
+					easing: 'easeOutElastic'
+				}
+			}
+		},
+		{
+			points: '983.4,101.6 779,385 983.4,668.4 416.6,668.4 611,388 416.6,101.9',
+			scaleX: 1,
+			scaleY: 1,
+			rotate: 145,
+			tx: 100,
+			ty: -50,
+			fill: {
+				color: 'none',
+				duration: 500,
+				easing: 'linear'
+			},
+			animation: {
+				points: {
+					duration: 500,
+					easing: 'easeOutExpo'
+				},
+				svg: {
+					duration: 1500,
+					easing: 'easeOutElastic'
+				}
+			}
+		},
+		{
+			points: '983.4,101.6 1255,385 983.4,668.4 416.6,668.4 157,368 416.6,101.9',
+			scaleX: .7,
+			scaleY: .7,
+			rotate: -70,
+			tx: -50,
+			ty: 50,
+			fill: {
+				color: 'none',
+				duration: 500,
+				easing: 'linear'
+			},
+			animation: {
+				points: {
+					duration: 500,
+					easing: 'easeOutExpo'
+				},
+				svg: {
+					duration: 1500,
+					easing: 'easeOutElastic'
+				}
+			}
+		},
+		{
+			points: '983.4,101.6 983.4,668.4 416.6,668.4 416.6,101.9 416.6,101.9 416.6,101.9',
+			scaleX: 1.2,
+			scaleY: 1.2,
+			rotate: 20,
+			tx: 0,
+			ty: 0,
+			fill: {
+				color: 'none',
+				duration: 500,
+				easing: 'linear'
+			},
+			animation: {
+				points: {
+					duration: 500,
+					easing: 'easeOutExpo'
+				},
+				svg: {
+					duration: 1500,
+					easing: 'easeOutElastic'
+				}
+			}
+		}
+	];
+	let step;
 
-  function sceneSetup(){
-    scene = new THREE.Scene();
-    var fogColor = new THREE.Color( 0x333333 )
-    scene.background = fogColor;
-    scene.fog = new THREE.Fog(fogColor, 0, 400);
+	const initShapeEl = function() {
+		anime.remove(DOM.svg);
+		anime({
+			targets: DOM.svg,
+			duration: 1,
+			easing: 'linear',
+			scaleX: shapes[0].scaleX,
+			scaleY: shapes[0].scaleY,
+			translateX: shapes[0].tx+'px',
+			translateY: shapes[0].ty+'px',
+			rotate: shapes[0].rotate+'deg'
+		});
+	};
 
-    
-    sky()
+	const createScrollWatchers = function() {
+		DOM.contentElems.forEach((el,pos) => {
+			const scrollElemToWatch = pos ? DOM.contentElems[pos] : DOM.footer;
+			pos = pos ? pos : contentElemsTotal;
+			const watcher = scrollMonitor.create(scrollElemToWatch,-350);
+			
+			watcher.enterViewport(function() {
+				step = pos;
+				anime.remove(DOM.shapeEl);
+				anime({
+					targets: DOM.shapeEl,
+					duration: shapes[pos].animation.points.duration,
+					easing: shapes[pos].animation.points.easing,
+					elasticity: shapes[pos].animation.points.elasticity || 0,
+					points: shapes[pos].points,
+					fill: {
+						value: shapes[pos].fill.color,
+						duration: shapes[pos].fill.duration,
+						easing: shapes[pos].fill.easing
+					}
+				});
 
-    camera = new THREE.PerspectiveCamera(60, width / height, .1, 10000);
-    camera.position.y = 8;
-    camera.position.z = 4;
-    
-    ambientLight = new THREE.AmbientLight(0xffffff, 1);
-    scene.add(ambientLight)
-    
+				anime.remove(DOM.svg);
+				anime({
+					targets: DOM.svg,
+					duration: shapes[pos].animation.svg.duration,
+					easing: shapes[pos].animation.svg.easing,
+					elasticity: shapes[pos].animation.svg.elasticity || 0,
+					scaleX: shapes[pos].scaleX,
+					scaleY: shapes[pos].scaleY,
+					translateX: shapes[pos].tx+'px',
+					translateY: shapes[pos].ty+'px',
+					rotate: shapes[pos].rotate+'deg'
+				});
+			});
 
-    renderer = new THREE.WebGLRenderer( {
-      canvas:container,
-      antialias:true
-    } );
-    renderer.setPixelRatio = devicePixelRatio;
-    renderer.setSize(width, height);
-    
+			watcher.exitViewport(function() {
+				const idx = !watcher.isAboveViewport ? pos-1 : pos+1;
 
-  }
+				if( idx <= contentElemsTotal && step !== idx ) {
+					step = idx;
+					anime.remove(DOM.shapeEl);
+					anime({
+						targets: DOM.shapeEl,
+						duration: shapes[idx].animation.points.duration,
+						easing: shapes[idx].animation.points.easing,
+						elasticity: shapes[idx].animation.points.elasticity || 0,
+						points: shapes[idx].points,
+						fill: {
+							value: shapes[idx].fill.color,
+							duration: shapes[idx].fill.duration,
+							easing: shapes[idx].fill.easing
+						}
+					});
 
-  function sceneElements(){
+					anime.remove(DOM.svg);
+					anime({
+						targets: DOM.svg,
+						duration: shapes[idx].animation.svg.duration,
+						easing: shapes[idx].animation.svg.easing,
+						elasticity: shapes[idx].animation.svg.elasticity || 0,
+						scaleX: shapes[idx].scaleX,
+						scaleY: shapes[idx].scaleY,
+						translateX: shapes[idx].tx+'px',
+						translateY: shapes[idx].ty+'px',
+						rotate: shapes[idx].rotate+'deg'
+					});
+				}
+			});
+		});
+	};
 
-    var geometry = new THREE.PlaneBufferGeometry(100, 400, 400, 400);
+	const init = function() {
+		imagesLoaded(document.body, () => {
+			initShapeEl();
+			createScrollWatchers();
+			Array.from(document.querySelectorAll('.content--layout')).forEach(el => new TiltObj(el));
+			// Remove loading class from body
+			document.body.classList.remove('loading');
+		});
+	}
 
-    var uniforms = {
-      time: { type: "f", value: 0.0 },
-      scroll: { type: "f", value: 0.0 },
-      distortCenter: { type: "f", value: 0.1 },
-      roadWidth: { type: "f", value: 0.5 },
-      pallete:{ type: "t", value: null},
-      speed: { type: "f", value: 3 },
-      maxHeight: { type: "f", value: 10.0 },
-      color:new THREE.Color(1, 1, 1)
-    }
-    
-    var material = new THREE.ShaderMaterial({
-      uniforms: THREE.UniformsUtils.merge([ THREE.ShaderLib.basic.uniforms, uniforms ]),
-      vertexShader: document.getElementById( 'custom-vertex' ).textContent,
-      fragmentShader: document.getElementById( 'custom-fragment' ).textContent,
-      wireframe:false,
-      fog:true
-    });
-
-    terrain = new THREE.Mesh(geometry, material);
-    terrain.position.z = -180;
-    terrain.rotation.x = -Math.PI / 2
-
-    scene.add(terrain)
-
-  }
-
-  function sceneTextures(){
-
-    // pallete
-    new THREE.TextureLoader().load( params.palleteImage, function(texture){
-      terrain.material.uniforms.pallete.value = texture;
-      terrain.material.needsUpdate = true;
-    });
-  }
-
-  function sky(){
-    sky = new THREE.Sky();
-    sky.scale.setScalar( 450000 );
-    sky.material.uniforms.turbidity.value = 13;
-    sky.material.uniforms.rayleigh.value = 1.2;
-    sky.material.uniforms.luminance.value = 1;
-    sky.material.uniforms.mieCoefficient.value = 0.1;
-    sky.material.uniforms.mieDirectionalG.value = 0.58;
-    
-    scene.add( sky );
-
-    sunSphere = new THREE.Mesh(
-      new THREE.SphereBufferGeometry( 20000, 16, 8 ),
-      new THREE.MeshBasicMaterial( { color: 0xffffff } )
-    );
-    sunSphere.visible = false;
-    scene.add( sunSphere );
-    
-    var theta = Math.PI * ( -0.002 );
-    var phi = 2 * Math.PI * ( -.25 );
-
-    sunSphere.position.x = 400000 * Math.cos( phi );
-    sunSphere.position.y = 400000 * Math.sin( phi ) * Math.sin( theta );
-    sunSphere.position.z = 400000 * Math.sin( phi ) * Math.cos( theta );
-    
-    sky.material.uniforms.sunPosition.value.copy( sunSphere.position );
-  }
-
-  function resize(){
-    width = window.innerWidth
-    height = window.innerHeight
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize( width, height );
-  }
-
-  function onInputMove(e){
-    e.preventDefault();
-    
-    var x, y
-    if(e.type == "mousemove"){
-      x = e.clientX;
-      y = e.clientY;
-    }else{
-      x = e.changedTouches[0].clientX
-      y = e.changedTouches[0].clientY
-    }
-    
-    mouse.x = x;
-    mouse.y = y;
-    
-  }
-
-  function render(){
-    requestAnimationFrame(render)
-
-
-    // damping mouse for smoother interaction
-    mouse.xDamped = lerp(mouse.xDamped, mouse.x, 0.1);
-    mouse.yDamped = lerp(mouse.yDamped, mouse.y, 0.1);
-
-    
-    var time = performance.now() * 0.001
-    terrain.material.uniforms.time.value = time
-    terrain.material.uniforms.scroll.value = time + map(mouse.yDamped, 0, height, 0, 4);
-    terrain.material.uniforms.distortCenter.value = Math.sin(time) * 0.1;
-    terrain.material.uniforms.roadWidth.value = map(mouse.xDamped, 0, width, 1, 4.5);
-
-    camera.position.y = map(mouse.yDamped, 0, height, 4, 11);
-
-    renderer.render(scene, camera)
-
-  }
-
-  function map (value, start1, stop1, start2, stop2) {
-    return start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1))
-  }
-
-  function lerp (start, end, amt){
-    return (1 - amt) * start + amt * end
-  }
-}
-
-const getRandomNumber = (min, max) => (Math.random() * (max - min) + min);
-
-animateTitles();
-
-function animateTitles() {
-  const overlay = document.querySelector('.overlay'); 
-  const title = document.querySelector('.content__title');
-  charming(title);
-  const titleLetters = Array.from(title.querySelectorAll('span'));
-
-  TweenMax.to(overlay, 2, {
-    ease: Quad.easeOut,
-    opacity: 0
-  });
-
-  TweenMax.set(titleLetters, {opacity: 0});
-  TweenMax.staggerTo(titleLetters, 1.5, {
-    ease: Expo.easeOut,
-    startAt: {rotationX: -100, z: -1000},
-    opacity: 1,
-    rotationX: 0,
-    z: 0
-  }, 0.1);
-
-  const subtitle = document.querySelector('.content__subtitle');
-  TweenMax.set(subtitle, {opacity: 0});
-  TweenMax.to(subtitle, 1.5, {
-    ease: Expo.easeOut,
-    startAt: {y: 30},
-    opacity: 1,
-    y: 0
-  });
-
-  const glitch = (el,cycles) => {
-    if ( cycles === 0 || cycles > 3 ) return;
-    TweenMax.set(el, {
-      x: getRandomNumber(-20,20), 
-      y: getRandomNumber(-20,20),
-      color: ['#f4d339','#df003f','#111111'][cycles-1]
-    });
-    setTimeout(() => {
-      TweenMax.set(el, {x: 0, y: 0, color: '#fff'});
-      glitch(el, cycles-1);
-    }, getRandomNumber(20,100));
-  };
-
-  const loop = (startAt) => {
-    this.timeout = setTimeout(() => {
-        const titleLettersShuffled = titleLetters.sort((a,b) => 0.5 - Math.random());
-        const lettersSet = titleLettersShuffled.slice(0, getRandomNumber(1,titleLetters.length+1));
-        for (let i = 0, len = lettersSet.length; i < len-1; ++i) {
-          glitch(lettersSet[i], 3);
-        }
-        loop();
-    }, startAt || getRandomNumber(500, 3000));
-  }
-  loop(1500);
-}
+	init();
+};
